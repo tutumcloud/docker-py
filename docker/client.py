@@ -107,7 +107,7 @@ class Client(requests.Session):
     def _container_config(self, image, command, hostname=None, user=None,
                           detach=False, stdin_open=False, tty=False,
                           mem_limit=0, ports=None, environment=None, dns=None,
-                          volumes=None, volumes_from=None,
+                          volumes=None, binds=None, volumes_from=None,
                           network_disabled=False, entrypoint=None,
                           cpu_shares=None, working_dir=None,
                           domainname=None, memswap_limit=0, cpuset=None):
@@ -202,7 +202,7 @@ class Client(requests.Session):
             if volumes_from is not None:
                 raise errors.DockerException(message.format('volumes_from'))
 
-        return {
+        config = {
             'Hostname': hostname,
             'Domainname': domainname,
             'ExposedPorts': ports,
@@ -227,6 +227,13 @@ class Client(requests.Session):
             'WorkingDir': working_dir,
             'MemorySwap': memswap_limit
         }
+
+        if utils.compare_version('1.15', self._version) >= 0:
+            config['HostConfig'] = {}
+            if binds is not None:
+                config['HostConfig']['Binds'] = binds
+
+        return config
 
     def _post_json(self, url, data, **kwargs):
         # Go <1.1 can't unserialize null to a string
@@ -531,7 +538,7 @@ class Client(requests.Session):
     def create_container(self, image, command=None, hostname=None, user=None,
                          detach=False, stdin_open=False, tty=False,
                          mem_limit=0, ports=None, environment=None, dns=None,
-                         volumes=None, volumes_from=None,
+                         volumes=None, binds=None, volumes_from=None,
                          network_disabled=False, name=None, entrypoint=None,
                          cpu_shares=None, working_dir=None,
                          domainname=None, memswap_limit=0, cpuset=None):
@@ -541,7 +548,7 @@ class Client(requests.Session):
 
         config = self._container_config(
             image, command, hostname, user, detach, stdin_open, tty, mem_limit,
-            ports, environment, dns, volumes, volumes_from, network_disabled,
+            ports, environment, dns, volumes, binds, volumes_from, network_disabled,
             entrypoint, cpu_shares, working_dir, domainname,
             memswap_limit, cpuset
         )

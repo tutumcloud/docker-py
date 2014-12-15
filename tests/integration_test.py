@@ -145,7 +145,32 @@ class TestCreateContainer(BaseTestCase):
         self.tmp_containers.append(res['Id'])
 
 
-class TestCreateContainerWithBinds(BaseTestCase):
+class TestCreateContainerWithBindsOnCreate(BaseTestCase):
+    def runTest(self):
+        mount_dest = '/mnt'
+        mount_origin = tempfile.mkdtemp()
+        self.tmp_folders.append(mount_origin)
+
+        filename = 'shared.txt'
+        shared_file = os.path.join(mount_origin, filename)
+
+        with open(shared_file, 'w'):
+            container = self.client.create_container(
+                'busybox',
+                ['ls', mount_dest], binds=["{}:{}".format(mount_origin, mount_dest)]
+            )
+            container_id = container['Id']
+            self.client.start(container_id)
+            self.tmp_containers.append(container_id)
+            exitcode = self.client.wait(container_id)
+            self.assertEqual(exitcode, 0)
+            logs = self.client.logs(container_id)
+
+        os.unlink(shared_file)
+        self.assertIn(filename, logs)
+
+
+class TestCreateContainerWithBindsOnStart(BaseTestCase):
     def runTest(self):
         mount_dest = '/mnt'
         mount_origin = tempfile.mkdtemp()
